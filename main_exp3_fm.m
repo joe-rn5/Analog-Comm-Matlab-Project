@@ -1,27 +1,24 @@
-%% MAIN_EXP3_FM -- Experiment 3: Narrowband FM
-% Reuses Person 1's preprocessing exactly as Experiments 1 and 2 do.
-% generate_nbfm.m and nbfm_demodulator.m are Person 5's functions --
-% this script will error with 'notImplemented' until those are filled in.
-
 clear; clc; close all;
 
 %% ---- Parameters ------------------------------------------------------
 audio_file  = 'eric.wav';
-cutoff_freq = 4000;     % Hz, ideal LPF cutoff (assignment spec)
-Fc          = 100e3;    % Hz, carrier frequency (assignment spec)
-oversample  = 5;        % Fs = 5*Fc per assignment
-kf          = 1000;     % TODO (Person 5): tune so the narrowband
-                         % condition holds -- see generate_nbfm.m
+cutoff_freq = 4000;
+Fc          = 100e3;
+oversample  = 5;
+kf          = 2000;  % Tuned for NBFM condition
 
-%% ---- Step 1: Preprocessing (Person 1's functions) ---------------------
+%% ---- Step 1: Preprocessing -------------------------------------------
 [filtered_signal, ~, Fs_audio, ~] = load_and_filter_audio(audio_file, cutoff_freq);
 [message, Fs_mod] = resample_for_carrier(filtered_signal, Fs_audio, Fc, oversample);
 
-%% ---- Step 2: Generate NBFM (Person 5) ---------------------------------
-[nbfm_signal, t_mod, ~] = generate_nbfm(message, Fs_mod, Fc, kf);
-plot_spectrum(nbfm_signal, Fs_mod, 'NBFM Spectrum');
+% FIX: Normalize message
+message = message / max(abs(message));
 
-%% ---- Step 3: Demodulate (Person 5) ------------------------------------
+%% ---- Step 2: Generate NBFM -------------------------------------------
+[nbfm_signal, t_mod, ~] = generate_nbfm(message, Fs_mod, Fc, kf);
+plot_spectrum(nbfm_signal, Fs_mod, 'NBFM Spectrum', [-1.2*Fc, 1.2*Fc]);
+
+%% ---- Step 3: Demodulate ----------------------------------------------
 rx = nbfm_demodulator(nbfm_signal, Fs_mod);
 
 figure;
@@ -31,5 +28,20 @@ title('NBFM Demodulated Signal'); xlabel('t (s)'); ylabel('Amplitude');
 rx_audio = downsample_for_audio(rx, Fs_mod, Fs_audio);
 sound(rx_audio, Fs_audio);
 pause(length(rx_audio)/Fs_audio + 1);
+
+%% ---- Step 4: Test with Different SNR Values --------------------------
+for snr_db = [0, 10, 30]
+    noisy_nbfm = awgn(nbfm_signal, snr_db, 'measured');
+    rx_noisy = nbfm_demodulator(noisy_nbfm, Fs_mod);
+    
+    figure;
+    plot(t_mod(1:length(rx_noisy)), rx_noisy);
+    title(sprintf('NBFM Demodulated - SNR = %d dB', snr_db));
+    xlabel('t (s)'); ylabel('Amplitude');
+    
+    rx_audio = downsample_for_audio(rx_noisy, Fs_mod, Fs_audio);
+    sound(rx_audio, Fs_audio);
+    pause(length(rx_audio)/Fs_audio + 1);
+end
 
 disp('main_exp3_fm.m complete.');
