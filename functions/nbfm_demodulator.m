@@ -1,36 +1,27 @@
 function rx = nbfm_demodulator(nbfm_signal, Fs)
-% NBFM_DEMODULATOR  Demodulate an NBFM signal using a differentiator
-% followed by an envelope detector.
+% NBFM_DEMODULATOR Demodulate NBFM using differentiator + envelope detector
 %
 %   rx = nbfm_demodulator(nbfm_signal, Fs)
 %
-%   Assignment reference: Experiment 3, step 4 -- "Demodulate the NBFM
-%   signal using a differentiator and an ED." [diff, hilbert, abs]
-%
-%   INPUTS
-%       nbfm_signal - NBFM modulated signal (output of generate_nbfm)
-%       Fs          - sampling frequency (Hz)
-%
-%   OUTPUT
-%       rx - recovered baseband message (assume no noise, per spec)
-%
-%   Owner: Person 5
-%
-%   APPROACH
-%   Differentiating an FM signal converts frequency variation into
-%   amplitude variation: the envelope of d/dt[cos(2*pi*Fc*t + phase(t))]
-%   is proportional to (Fc + dphase/dt), i.e. proportional to Fc plus
-%   the original message. Steps:
-%     1) differentiate with diff() -- remember diff() shortens the
-%        vector by one sample and needs scaling by Fs to approximate
-%        a true derivative
-%     2) envelope-detect the result with Person 3's envelope_detector.m
-%     3) subtract the mean to remove the DC term contributed by Fc
+%   Method: differentiating FM converts freq variation to amplitude variation
+%   d/dt[cos(ωc t + φ(t))] = -(ωc + dφ/dt)sin(ωc t + φ(t))
+%   Envelope of derivative = |ωc + dφ/dt| ≈ ωc + dφ/dt (for NBFM)
+%   After removing DC: rx ∝ dφ/dt ∝ message
 
-    % TODO: dsig = diff(nbfm_signal) * Fs;
-    % TODO: env  = envelope_detector(dsig);   % reuse Person 3's function
-    % TODO: rx   = env - mean(env);           % strip the Fc-proportional DC term
+    % Differentiate FM signal
+    dsig = diff(nbfm_signal) * Fs;
 
-    error('nbfm_demodulator:notImplemented', ...
-        'TODO: implement per Experiment 3, step 4.');
+    % Pad to maintain same length (or use gradient for better accuracy)
+    dsig = [dsig; dsig(end)];
+
+    % Envelope detection using Hilbert transform
+    env = abs(hilbert(dsig));
+
+    % Remove DC component (proportional to Fc)
+    rx = env - mean(env);
+
+    % Optional: low-pass filter to remove any residual high-frequency noise
+    % Design a lowpass filter with cutoff at 4kHz
+    % [b, a] = butter(4, 4000/(Fs/2), 'low');
+    % rx = filtfilt(b, a, rx);
 end
