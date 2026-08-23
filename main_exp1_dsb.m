@@ -1,5 +1,4 @@
 
-
 clear; clc; close all;
 
 %% ---- Parameters ------------------------------------------------------
@@ -15,6 +14,8 @@ oversample  = 5;            % Fs = 5*Fc per assignment
 [message, Fs_mod] = resample_for_carrier(filtered_signal, Fs, Fc, oversample);
 % message : filtered + resampled signal, ready to modulate
 % Fs_mod  : sampling frequency to use for all modulation/detection below (~5*Fc)
+% Fs      : original audio rate -- kept around so playback can be
+%           downsampled back to it before every sound() call
 
 %% ---- Step 2: Person 2's DSB generation --------------------------------
 [dsb_tc, t_mod, ~] = generate_dsb_tc(message, Fs_mod, Fc);
@@ -34,10 +35,15 @@ title('Envelope Detector Output - DSB-TC'); xlabel('t (s)');
 subplot(2,1,2); plot(t_mod, env_sc);
 title('Envelope Detector Output - DSB-SC (expect distortion)'); xlabel('t (s)');
 
-sound(env_tc, Fs_mod);
-pause(length(env_tc)/Fs_mod + 1);
-sound(env_sc, Fs_mod);
-pause(length(env_sc)/Fs_mod + 1);
+% FIX: sound() can't play at Fs_mod (~500 kHz) -- downsample back to the
+% original audio rate first, same pattern main_exp2_ssb.m already uses.
+env_tc_audio = downsample_for_audio(env_tc, Fs_mod, Fs);
+sound(env_tc_audio, Fs);
+pause(length(env_tc_audio)/Fs + 1);
+
+env_sc_audio = downsample_for_audio(env_sc, Fs_mod, Fs);
+sound(env_sc_audio, Fs);
+pause(length(env_sc_audio)/Fs + 1);
 % OBSERVATION (for report, step 7): envelope detection works cleanly for
 % DSB-TC because the carrier is transmitted with a DC bias large enough
 % to keep (dc_bias + message) always positive, so abs(hilbert(.)) tracks
@@ -60,12 +66,18 @@ plot_spectrum(rx_snr0,  Fs_mod, 'Received Spectrum - SNR = 0 dB');
 plot_spectrum(rx_snr10, Fs_mod, 'Received Spectrum - SNR = 10 dB');
 plot_spectrum(rx_snr30, Fs_mod, 'Received Spectrum - SNR = 30 dB');
 
-sound(rx_snr0, Fs_mod);
-pause(length(rx_snr0)/Fs_mod + 1);
-sound(rx_snr10, Fs_mod);
-pause(length(rx_snr10)/Fs_mod + 1);
-sound(rx_snr30, Fs_mod);
-pause(length(rx_snr30)/Fs_mod + 1);
+% FIX: same downsample-before-sound pattern as Step 3.
+rx_snr0_audio = downsample_for_audio(rx_snr0, Fs_mod, Fs);
+sound(rx_snr0_audio, Fs);
+pause(length(rx_snr0_audio)/Fs + 1);
+
+rx_snr10_audio = downsample_for_audio(rx_snr10, Fs_mod, Fs);
+sound(rx_snr10_audio, Fs);
+pause(length(rx_snr10_audio)/Fs + 1);
+
+rx_snr30_audio = downsample_for_audio(rx_snr30, Fs_mod, Fs);
+sound(rx_snr30_audio, Fs);
+pause(length(rx_snr30_audio)/Fs + 1);
 
 %% ---- Step 5: Coherent detection with frequency error (100.1 kHz) -----
 rx_freqerr = coherent_detector(dsb_sc, Fc, Fs_mod, 'FreqOffset', 100);
@@ -76,6 +88,22 @@ figure;
 plot(rx_freqerr);
 title('Coherent Detection - Frequency Error (100.1 kHz LO)');
 xlabel('Sample'); ylabel('Amplitude');
+
+% ADDED: assignment step 9 explicitly asks to "find the error" -- compare
+% against a clean (zero-offset, no-noise) coherent detection as reference.
+rx_clean = coherent_detector(dsb_sc, Fc, Fs_mod);
+err_signal = rx_clean - rx_freqerr;
+
+figure;
+plot(t_mod, err_signal);
+title('Error Signal: Clean Detection vs. 100.1 kHz LO Mismatch');
+xlabel('t (s)'); ylabel('Amplitude');
+
+fprintf('RMS error from 100 Hz frequency offset: %.4f\n', rms(err_signal));
+% Note for the report: with a frequency-mismatched LO, the recovered
+% envelope is modulated by an additional cos(2*pi*FreqOffset*t) term --
+% listen to/plot rx_freqerr and identify what this periodic amplitude
+% variation is commonly called.
 
 %% ---- Step 6: Coherent detection with phase error (20 deg) ------------
 rx_phaseerr = coherent_detector(dsb_sc, Fc, Fs_mod, 'PhaseOffset', 20);
