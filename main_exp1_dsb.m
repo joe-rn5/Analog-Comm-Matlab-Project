@@ -19,7 +19,7 @@ message = message / max(abs(message));
 [dsb_tc, t_mod, ~] = generate_dsb_tc(message, Fs_mod, Fc);
 [dsb_sc, ~, ~] = generate_dsb_sc(message, Fs_mod, Fc);
 
-plot_spectrum(dsb_tc, Fs_mod, 'DSB-TC Spectrum', [-2*Fc, 2*Fc]);
+plot_spectrum(dsb_tc, Fs_mod, 'DSB-TC Spectrum', [-2*Fc, 2*Fc], true);
 plot_spectrum(dsb_sc, Fs_mod, 'DSB-SC Spectrum', [-2*Fc, 2*Fc]);
 
 %% ---- Step 3: Envelope Detection --------------------------------------
