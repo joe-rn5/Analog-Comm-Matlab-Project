@@ -3,23 +3,20 @@ function ssb_lsb = filter_ssb_butter(dsb_signal, Fs, Fc, Bm, order)
 %
 %   ssb_lsb = filter_ssb_butter(dsb_signal, Fs, Fc, Bm)
 %   ssb_lsb = filter_ssb_butter(dsb_signal, Fs, Fc, Bm, order)
+%
+%   Uses filter() not filtfilt() — shows real phase distortion
+%   NOTE: butter(4, ... 'bandpass') produces an 8th-order filter
 
     if nargin < 5 || isempty(order)
-        order = 4;   % assignment spec: 4th order
+        order = 4;
     end
 
-    % LSB band: [Fc-Bm, Fc] (positive frequencies)
+    % LSB band: [Fc-Bm, Fc]
     Wn = [Fc - Bm, Fc] / (Fs/2);
 
     % Design Butterworth bandpass filter
     [b, a] = butter(order, Wn, 'bandpass');
 
-    % Apply filter with zero-phase filtering to avoid phase distortion
-    ssb_lsb = filtfilt(b, a, dsb_signal);
-
-    % Plot comparison with ideal filter if desired
-    % ssb_ideal = filter_ssb_ideal(dsb_signal, Fs, Fc, Bm);
-    % figure;
-    % subplot(2,1,1); plot(ssb_ideal); title('Ideal Filter Output');
-    % subplot(2,1,2); plot(ssb_lsb); title('Butterworth Filter Output');
+    % Apply filter (causal, shows phase distortion)
+    ssb_lsb = filter(b, a, dsb_signal);
 end

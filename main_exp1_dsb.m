@@ -12,7 +12,7 @@ oversample  = 5;
 
 [message, Fs_mod] = resample_for_carrier(filtered_signal, Fs, Fc, oversample);
 
-% FIX: Normalize message to ensure proper amplitude
+% Normalize message
 message = message / max(abs(message));
 
 %% ---- Step 2: DSB Generation ------------------------------------------
@@ -46,24 +46,24 @@ env_sc_audio = downsample_for_audio(env_sc, Fs_mod, Fs);
 sound(env_sc_audio, Fs);
 pause(length(env_sc_audio)/Fs + 1);
 
-%% ---- Step 4: Coherent Detection with SNR -----------------------------
+%% ---- Step 4: Coherent Detection with SNR (NEW SIGNATURE: Fs, Fc) ----
 for snr = [0, 10, 30]
-    rx = coherent_detector(dsb_sc, Fc, Fs_mod, 'SNR_dB', snr);
-    
+    rx = coherent_detector(dsb_sc, Fs_mod, Fc, 'SNR_dB', snr);
+
     figure;
     plot(rx);
     title(sprintf('Coherent Detection - SNR = %d dB', snr));
     xlabel('Sample'); ylabel('Amplitude');
-    
+
     plot_spectrum(rx, Fs_mod, sprintf('Received Spectrum - SNR = %d dB', snr), [-5000, 5000]);
-    
+
     rx_audio = downsample_for_audio(rx, Fs_mod, Fs);
     sound(rx_audio, Fs);
     pause(length(rx_audio)/Fs + 1);
 end
 
 %% ---- Step 5: Frequency Error (100.1 kHz) ----------------------------
-rx_freqerr = coherent_detector(dsb_sc, Fc, Fs_mod, 'FreqOffset', 100);
+rx_freqerr = coherent_detector(dsb_sc, Fs_mod, Fc, 'FreqOffset', 100);
 
 figure;
 plot(rx_freqerr);
@@ -71,7 +71,7 @@ title('Coherent Detection - Frequency Error (100.1 kHz LO)');
 xlabel('Sample'); ylabel('Amplitude');
 
 % Compare with clean detection
-rx_clean = coherent_detector(dsb_sc, Fc, Fs_mod);
+rx_clean = coherent_detector(dsb_sc, Fs_mod, Fc);
 err_signal = rx_clean - rx_freqerr;
 
 figure;
@@ -82,7 +82,7 @@ xlabel('t (s)'); ylabel('Amplitude');
 fprintf('RMS error from 100 Hz frequency offset: %.4f\n', rms(err_signal));
 
 %% ---- Step 6: Phase Error (20 degrees) --------------------------------
-rx_phaseerr = coherent_detector(dsb_sc, Fc, Fs_mod, 'PhaseOffset', 20);
+rx_phaseerr = coherent_detector(dsb_sc, Fs_mod, Fc, 'PhaseOffset', 20);
 
 figure;
 plot(rx_phaseerr);

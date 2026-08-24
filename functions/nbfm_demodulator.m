@@ -1,25 +1,28 @@
 function rx = nbfm_demodulator(nbfm_signal, Fs)
-% NBFM_DEMODULATOR - Smooth demodulation using gradient
+% NBFM_DEMODULATOR - With volume boosting
 
-    % Use gradient instead of diff (smoother)
+    % Differentiate
     dsig = gradient(nbfm_signal) * Fs;
 
-    % Square the signal (simple envelope detection)
-    env = sqrt(dsig.^2 + (imag(hilbert(dsig))).^2);
-    % OR use Hilbert:
-    % env = abs(hilbert(dsig));
+    % Envelope detection
+    env = abs(hilbert(dsig));
 
     % Remove DC
     rx = env - mean(env);
 
-    % Multi-stage filtering for clean audio
-    [b, a] = butter(4, 4000/(Fs/2), 'low');
+    % Low-pass filter
+    [b, a] = butter(6, 4000/(Fs/2), 'low');
     rx = filtfilt(b, a, rx);
 
-    % Another filter to remove residual noise
-    [b2, a2] = butter(2, 3000/(Fs/2), 'low');
-    rx = filtfilt(b2, a2, rx);
+    % VOLUME FIX: Amplify
+    rx = rx * 2.5;  % Boost volume
 
-    % Normalize
-    rx = rx / max(abs(rx));
+    % Normalize without making it too quiet
+    max_val = max(abs(rx));
+    if max_val > 0.8
+        rx = rx / max_val * 0.9;  % Prevent clipping
+    end
+
+    % Remove DC again (might have crept in)
+    rx = rx - mean(rx);
 end
